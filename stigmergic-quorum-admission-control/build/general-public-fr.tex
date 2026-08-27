@@ -1,0 +1,141 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=3cm]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}
+{\LARGE Une porte de village qui apprend à faire attendre}\\[0.6em]
+{\large Explication accessible du « contrôle d'admission stigmergique et
+  de quorum »}\\[0.3em]
+{\small \texttt{moderation-pipeline-prototype} --- août 2026}
+\end{center}
+
+\vspace{1em}
+
+\textbf{Le problème.} Certains litiges qui arrivent devant un système de
+modération sont réellement difficiles à trancher~: chaque camp avance des
+arguments qui attaquent ceux de l'autre, et la méthode rapide et peu
+coûteuse censée les départager ne parvient à aucune conclusion nette.
+Dans ce cas, le système se rabat sur une méthode bien plus minutieuse,
+et bien plus coûteuse, pour démêler l'ensemble --- une méthode utile,
+mais que l'on ne souhaite pas offrir gratuitement, sur simple demande, à
+quiconque la sollicite. Le défaut se situe dans la manière dont cette
+méthode coûteuse se déclenche. Dans la conception d'origine, la toute
+première personne à se présenter avec un argument d'apparence plausible
+fait basculer le dossier vers le traitement coûteux, immédiatement.
+C'est exactement le genre de règle qu'un attaquant adore~: se présenter
+une seule fois, en masse, avec un tas d'arguments fabriqués, et la porte
+coûteuse s'ouvre gratuitement, autant de fois qu'on le souhaite.
+
+\textbf{L'idée.} Le remède emprunte deux mécanismes à la nature, et il
+vaut la peine de les prendre l'un après l'autre, car chacun résout une
+moitié différente du problème.
+
+Le premier mécanisme est la façon dont une colonie de fourmis retient
+quel chemin vers la nourriture mérite d'être suivi. Une fourmi ne vote
+pas une fois pour toutes~; elle dépose une odeur en marchant, et cette
+odeur s'estompe régulièrement, à moins que d'autres fourmis, arrivées
+indépendamment, n'empruntent le même chemin et ne la raniment. Un chemin
+ne reste marqué que s'il continue de gagner des passages frais, venus de
+fourmis différentes --- une seule fourmi qui fait des allers-retours sur
+sa propre piste toute la journée laisse, en pratique, une trace tout
+aussi faible qu'un unique passage. Transposé ici~: chaque dossier
+disputé porte un score qui s'affaiblit un peu à chaque pas de l'horloge,
+et un nouvel argument ne relève ce score que d'un tout petit peu s'il
+provient d'une source ayant déjà pris la parole récemment. Une
+préoccupation véritablement nouvelle, indépendante, maintient un dossier
+en vie~; le même plaignant répétant la même chose en boucle, non.
+
+Le second mécanisme est la façon dont les bactéries décident, en
+colonie, du moment où elles sont assez nombreuses pour agir ensemble ---
+un mécanisme appelé détection de quorum. Aucune bactérie isolée ne prend
+cette décision seule~; toute la colonie lit un signal chimique partagé
+qui reflète la densité déjà atteinte, et relève ou abaisse en
+conséquence son seuil collectif d'action. Transposé ici~: la barre qu'un
+dossier doit franchir pour atteindre le traitement coûteux n'est pas
+fixe. Elle s'élève automatiquement dès que ce traitement coûteux est
+déjà occupé par d'autres dossiers --- exactement comme une salle de
+restaurant devient plus difficile à intégrer à mesure qu'elle se
+remplit, sans que personne à l'entrée ne décide consciemment de durcir
+les critères.
+
+\textbf{L'assemblage.} Le score d'un dossier disputé s'estompe comme une
+odeur de piste qui s'évente, n'est relevé que par un renforcement
+d'apparence nouvelle, est plafonné pour qu'aucun instant isolé
+d'activité ne puisse le faire bondir au-delà d'une limite raisonnable, et
+doit franchir une barre qui monte avec l'occupation déjà en cours du
+traitement coûteux. Une seule salve d'indignation fabriquée, aussi
+massive soit-elle, ne peut faire franchir à un score plafonné et
+décroissant un seuil en un seul instant --- il n'y a tout simplement pas
+assez de poids autorisé à entrer dans un seul pas de l'horloge, quel que
+soit le nombre de voix factices qui se présentent d'un coup.
+
+\textbf{Ce qui a réellement été mesuré, non simplement espéré.} Le
+mécanisme a été confronté à son prédécesseur --- la règle d'admission
+instantanée --- sous plusieurs formes d'attaque, et la comparaison a été
+menée honnêtement, y compris sur le cas où le nouveau mécanisme ne
+l'emporte pas complètement. Une salve unique, de taille quelconque, d'une
+seule voix à cinq mille, arrivant en un instant~: entièrement bloquée, à
+chaque fois, là où l'ancienne règle laissait passer chacune d'entre
+elles. La même salve soutenue très longtemps depuis une seule source
+repérable~: toujours entièrement bloquée, et de façon démontrable, non
+pas seulement « bloquée jusqu'ici dans les essais menés ». Deux cents
+litiges distincts, chacun frappé d'une salve isolée, aux côtés de quinze
+litiges authentiques en croissance organique au même moment~: l'ancienne
+règle laissait passer toutes les attaques et admettait aussi tous les
+litiges authentiques, pour un coût de traitement réel de 215 dossiers~;
+le nouveau mécanisme n'en laissait passer aucune tout en admettant les
+quinze litiges authentiques, pour un coût réel de 15 dossiers --- quatre-vingt-treize
+pour cent de travail en moins imposé au traitement coûteux. L'exception
+honnête, énoncée sans détour plutôt que dissimulée~: un attaquant patient,
+disposé à fabriquer une identité fraîche, jamais réutilisée et
+d'apparence indépendante à chaque pas de l'horloge, pendant plusieurs pas
+d'affilée, n'est pas complètement arrêté. Cet attaquant finit par passer
+tout de même, au prix d'un effort et d'un temps environ cinq fois
+supérieurs à ce que l'ancienne règle lui aurait coûté. Le mécanisme
+transforme une attaque gratuite en attaque coûteuse~; il ne la rend pas
+impossible, et cette limite est rapportée ici plutôt que laissée à la
+découverte, plus tard, par quelqu'un d'autre.
+
+\textbf{Ce que ce mécanisme ne fait délibérément pas.} Il ne dit rien de
+qui a \emph{raison} dans le litige lui-même --- ce jugement reste
+entièrement confié au traitement coûteux qu'il protège, une fois le
+dossier admis. Il suppose qu'il existe un coût réel, même modeste, à se
+présenter comme une voix toute nouvelle et indépendante à chaque pas~;
+si cette hypothèse cesse de tenir pour un attaquant donné, le retard
+imposé constitue toute la défense, non un filet posé sur quelque chose
+de plus solide. Et le tour de l'estompage plafonné d'une part, celui de
+la barre qui monte d'autre part, pris chacun tout à fait à part, sont
+individuellement bien connus en dehors de la biologie aussi --- le
+premier ressemble à un limiteur de débit ordinaire, utilisé partout en
+informatique~; le second ressemble à une technique de réseau vieille de
+plusieurs décennies, destinée à désengorger une file avant qu'elle ne
+déborde. Ce qu'une recherche approfondie dans la littérature de recherche
+pertinente n'a pas fait apparaître, c'est cette combinaison précise des
+trois éléments, gardant spécifiquement ce type de recours coûteux et
+difficile à paralléliser. C'est là l'affirmation restreinte qui est
+faite, et seulement dans la mesure où cette recherche a été menée à
+fond --- non une prétention que personne, nulle part, n'aurait jamais
+combiné ces idées auparavant.
+
+\textbf{Pourquoi cela mérite d'être consigné.} Rien, dans le traitement
+coûteux lui-même, n'a eu besoin de changer~; le correctif se loge
+entièrement à la porte qui le précède. Les ingrédients pris
+individuellement --- un score qui s'estompe, un plafond sur ce qu'un
+seul instant peut apporter, une barre qui monte avec l'affluence --- sont
+chacun empruntés à des domaines forts de leur propre longue expérience,
+biologique aussi bien que informatique. Ce qui est rapporté ici, c'est la
+manière dont ils se composent, testée honnêtement contre l'attaque
+qu'ils devaient contrer, avec le cas où le succès n'est que partiel
+énoncé aussi clairement que les cas de succès complet.
+
+\end{document}

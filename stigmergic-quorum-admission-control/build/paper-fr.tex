@@ -1,0 +1,475 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue!50!black]{hyperref}
+\usepackage{xurl}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Définition}
+\newtheorem{corollaire}{Corollaire}
+
+\title{Une porte d'admission à décroissance pondérée, à escompte
+  d'indépendance des sources et à seuil adaptatif de charge, pour un
+  étage d'argumentation NP-complet}
+\author{Note d'ingénierie de prototype --- \texttt{moderation-pipeline-prototype}}
+\date{Août 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Un pipeline d'escalade qui bascule vers l'énumération d'extensions préférées
+dans un cadre d'argumentation abstraite (Dung, 1995) lorsque la sémantique
+fondée ne tranche pas hérite de la complexité, dans le pire cas, de ce
+recours~: l'acceptation crédule d'une extension préférée est NP-complète.
+Une règle d'admission qui ouvre l'accès à cet étage coûteux dès qu'un
+dossier stagne et que le délai d'attente expire est exploitable au coût
+attaquant $O(1)$~: une seule salve d'arguments plausibles et mutuellement
+attaquants suffit à forcer l'admission. Nous spécifions, implémentons et
+soumettons à une évaluation adversariale une porte de remplacement,
+construite par composition de trois éléments~: un score de pression
+d'escalade propre à chaque dossier, qui décroît géométriquement à chaque
+pas de temps (transposition directe de la règle d'évaporation des
+phéromones utilisée en optimisation par colonies de fourmis), un
+renforcement plafonné par pas et ramené à un poids quasi nul lorsqu'il
+provient d'une source déjà vue dans une fenêtre récente (codant une
+exigence de corroboration provenant de sources réellement indépendantes,
+et non simplement d'un délai écoulé), et un seuil d'admission qui
+lui-même s'élève avec le taux d'occupation courant de l'étage coûteux à
+l'échelle du système (un signal agrégé, dépendant de la densité, dans
+l'esprit du \emph{quorum sensing}). Nous dérivons sous forme close le
+comportement en régime permanent et le temps minimal d'admission de cette
+porte à partir de la récurrence linéaire qui la gouverne, et vérifions
+cette dérivation contre la simulation déployée~: une salve en un seul pas
+de temps, de taille quelconque (1 à 5000), est bloquée sans condition~;
+une inondation persistante issue d'une même cohorte est bloquée
+structurellement, son score en régime permanent étant provablement
+incapable d'atteindre le seuil~; une inondation persistante utilisant à
+chaque pas une source fraîche et d'apparence non liée n'est pas bloquée
+mais voit son admission retardée du coût attaquant $O(1)$ à $O(5)$ tours
+soutenus et diversifiés en identité, conformément à la prédiction
+analytique à un pas près. Une recherche dédiée d'antériorités, en seize
+requêtes, n'a trouvé aucun précédent direct pour cette composition
+précise à trois éléments gardant l'accès à un étage d'argumentation
+NP-complet~; les transferts biologiques pris isolément, et le domaine
+général du contrôle d'admission, sont en revanche bien documentés, et
+cités comme tels plutôt que passés sous silence. Le résultat est
+rapporté comme une défense partielle honnêtement bornée --- une
+augmentation réelle et quantifiée du coût attaquant, non une clôture ---
+cohérente avec le résidu identifié pour la variante la plus difficile, celle
+d'un attaquant patient et diversifiant son identité.
+\end{abstract}
+
+\section{Le problème}
+\label{sec:problem}
+
+Un pipeline de modération de contenu à quatre étages achemine vers un
+cadre d'argumentation abstraite (\emph{abstract argumentation framework},
+AF) \cite{dung1995} les dossiers sur lesquels un étage de classification
+sélective s'est abstenu~: les arguments et les attaques sont construits
+à partir des déclarations et réfutations brutes du dossier, et
+l'\emph{extension fondée} du cadre --- le plus petit point fixe de la
+fonction caractéristique $F_{AF}$, atteignable en temps polynomial --- en
+constitue la sortie principale, tractable. Lorsque deux groupes
+d'arguments qui s'attaquent mutuellement laissent l'extension fondée vide
+(le motif dit du « diamant de Nixon »), le pipeline se rabat sur
+l'énumération des \emph{extensions préférées}, dont le problème
+d'acceptation crédule est NP-complet \cite{fichte2024}. Ce recours est
+une échappatoire nécessaire, délibérément bornée, non un défaut de
+conception~: sans lui, un dossier bloqué ne se résoudrait jamais.
+
+La vulnérabilité se situe à la frontière de l'\emph{admission}, non dans
+la machinerie d'argumentation elle-même. Si un dossier stagnant est admis
+à l'étage coûteux dès que son délai d'escalade expire, un attaquant
+capable de produire, en une seule salve, des arguments plausibles et
+mutuellement attaquants force l'admission au coût $O(1)$~: aucune
+persistance, aucun signal d'identité distinguable, rien que du volume à
+un instant donné. L'objectif de l'attaquant n'est pas de gagner le
+débat --- la porte d'intégrité des preuves du scénario A ferme déjà
+cette voie \cite{specA} --- mais de faire payer à la plateforme, à
+répétition et à faible coût, la taxe NP-complète.
+
+\section{La porte}
+\label{sec:gate}
+
+\subsection{Source de conception}
+
+Deux mécanismes biologiques ont motivé la construction, utilisés ici
+comme source génératrice de la conception, et non comme justification
+apportée après coup à un mécanisme déjà bâti.
+
+\textbf{Renforcement stigmergique.} Chez les fourmis en quête de
+nourriture, les pistes de phéromones s'évaporent en continu~; la règle de
+mise à jour canonique de Dorigo et Stützle s'écrit
+$\tau \leftarrow (1-\rho)\tau$, appliquée à chaque itération
+\cite{dorigo2004}. Les expériences du pont double de Deneubourg ont établi
+le fait complémentaire que ce qui compte dans la force d'une piste est le
+renforcement apporté par des fourmis explorant \emph{indépendamment} les
+unes des autres, et non un seul individu repassant plusieurs fois sur son
+propre chemin~; AntNet, de Di Caro et Dorigo, impose la même exigence
+d'indépendance dans un cadre de systèmes distribués, en bâtissant sa
+règle de renforcement sur une « communication indirecte et non
+coordonnée » entre agents qui « collectent l'information en explorant le
+réseau » \cite{dicaro1998}.
+
+\textbf{Détection de quorum.} Chez les bactéries, le \emph{quorum
+sensing} régule l'expression génique en fonction de la densité de
+population, détectée par un signal agrégé, propre à l'environnement
+partagé (la concentration d'un auto-inducteur), plutôt que par l'état
+privé d'une cellule isolée \cite{miller2001}. L'idée structurelle
+transposée ici est étroite et précise~: subordonner une admission
+collective à un signal d'occupation partagé et agrégé, non au seul score
+local d'un dossier pris isolément.
+
+\subsection{Spécification formelle}
+
+\begin{definition}[État d'admission]
+Un dossier $c$ possède un score $S_c(t) \in \mathbb{R}_{\geq 0}$,
+initialisé à $0$ au premier contact. À chaque pas de temps discret
+$t = 0, 1, 2, \dots$, l'ensemble des événements de renforcement observés
+pour $c$ est un multiensemble d'identifiants de cohorte-source
+$R_c(t) \subseteq \mathcal{K}$.
+\end{definition}
+
+\begin{definition}[Contribution par pas]
+Pour chaque cohorte $k \in R_c(t)$ (dédupliquée à l'intérieur du pas),
+soit $\mathrm{frais}(k,c,t) = 1$ si $k$ n'a pas renforcé $c$ au cours des
+$w$ derniers pas (la fenêtre d'indépendance), et $0$ sinon. La
+contribution brute du pas est
+\[
+r_c(t) = \sum_{k \in R_c(t)} \big[ \mathrm{frais}(k,c,t)\cdot 1 +
+\big(1-\mathrm{frais}(k,c,t)\big)\cdot \delta \big],
+\qquad 0 < \delta \ll 1,
+\]
+plafonnée à un montant fixe par pas $\gamma$~: la contribution appliquée
+est $\hat r_c(t) = \min(r_c(t), \gamma)$.
+\end{definition}
+
+\begin{definition}[Mise à jour du score]
+\[
+S_c(t) = (1-\rho)\, S_c(t-1) + \hat r_c(t), \qquad \rho \in (0,1].
+\]
+\end{definition}
+
+\begin{definition}[Seuil d'admission adaptatif à la charge]
+Soit $L(t)$ le nombre de dossiers occupant l'étage coûteux au pas $t$ (un
+signal partagé et agrégé, propre au système entier, non une propriété du
+seul dossier $c$), $\theta_0$ le seuil de base, $\kappa$ la sensibilité à
+la charge, et $C$ une capacité de référence. Le seuil d'admission est
+\[
+\Theta(t) = \theta_0 \Big(1 + \kappa \frac{L(t)}{C}\Big).
+\]
+Le dossier $c$ est admis à l'étage coûteux au premier pas $t_{\ast}$ tel
+que $S_c(t_{\ast}) \geq \Theta(t_{\ast})$.
+\end{definition}
+
+Cette spécification compose trois mécanismes indépendamment motivés~: une
+décroissance géométrique (évaporation stigmergique), une contribution
+plafonnée par pas et escomptée selon l'indépendance des sources
+(renforcement stigmergique exigeant la diversité des sources), et un
+seuil adaptatif à la charge (détection de quorum). Chaque élément, pris
+isolément, recombine un principe déjà connu --- décroissance plus
+plafond par pas est structurellement un limiteur de débit de type
+\emph{leaky bucket}/EWMA, et un seuil qui s'élève avec la charge est
+structurellement proche de \emph{Random Early Detection}
+\cite{floyd1993}. L'objet de la composition est la contribution
+spécifique, revendiquée comme telle~: faire garder ensemble, par ces
+trois mécanismes, l'accès à un étage d'argumentation NP-complet, en
+exigeant un sourçage indépendant --- et non le simple écoulement du
+temps --- pour qu'un renforcement compte à plein poids.
+
+\subsection{Comportement en forme close}
+
+Considérons le pire cas pour un attaquant capable de livrer, à chaque
+pas, la contribution appliquée maximale $c_{\ast}$ (soit $\gamma$, si une
+source d'apparence fraîche est disponible à chaque pas, soit
+$\delta\gamma$, si la même source se répète). En déroulant la récurrence
+à partir de $S_c(0) = 0$~:
+\[
+S_c(n) = c_{\ast} \sum_{i=0}^{n-1} (1-\rho)^i = c_{\ast}\,\frac{1-(1-\rho)^n}{\rho}.
+\]
+
+\begin{proposition}[Plafond en régime permanent]
+\label{prop:plafond}
+$\displaystyle \lim_{n\to\infty} S_c(n) = \frac{c_{\ast}}{\rho}$. Si
+$\Theta \geq c_{\ast}/\rho$ à la charge en vigueur au moment du contact,
+aucune suite de renforcements plafonnés au taux $c_{\ast}$ ne peut jamais
+admettre $c$, quelle que soit sa durée.
+\end{proposition}
+\begin{proof}[Argument]
+Immédiat à partir de la forme close~: $(1-\rho)^n \to 0$ quand
+$n\to\infty$ pour $\rho \in (0,1]$, si bien que $S_c(n)$ croît de façon
+monotone vers $c_{\ast}/\rho$ par valeurs inférieures (chaque terme de la
+somme est positif ou nul). Si le plafond n'atteint pas $\Theta$, aucun
+$n$ fini ne le peut non plus, puisque $S_c(n) < c_{\ast}/\rho$ pour tout
+$n$ fini.
+\end{proof}
+
+C'est ce mécanisme qui rend l'inondation persistante issue d'une même
+cohorte \emph{structurellement} bloquée, et non pas simplement retardée~:
+un renforcement répété depuis une seule source est escompté à
+$c_{\ast} = \delta\gamma$, dont le plafond $\delta\gamma/\rho$ est conçu
+pour rester sous $\theta_0$.
+
+\begin{proposition}[Nombre minimal de pas jusqu'à l'admission]
+\label{prop:minpas}
+Si $\Theta < c_{\ast}/\rho$ (le plafond atteint bien le seuil), le
+nombre minimal de pas jusqu'à l'admission, en supposant que l'attaquant
+sature $c_{\ast}=\gamma$ à chaque pas depuis une source d'apparence
+fraîche, est
+\[
+n_{\min} = \frac{\ln\!\big(1 - \Theta\rho/\gamma\big)}{\ln(1-\rho)}.
+\]
+\end{proposition}
+\begin{proof}[Argument]
+On résout $S_c(n) \geq \Theta$ pour le plus petit entier $n$, en
+utilisant la forme close de la proposition~\ref{prop:plafond} avec
+$c_{\ast}=\gamma$~: $\gamma(1-(1-\rho)^n)/\rho \geq \Theta \iff
+(1-\rho)^n \leq 1-\Theta\rho/\gamma$. Comme $0<1-\rho<1$, prendre le
+logarithme des deux membres inverse l'inégalité~:
+$n\ln(1-\rho) \leq \ln(1-\Theta\rho/\gamma)$, et diviser par la quantité
+négative $\ln(1-\rho)$ donne
+$n \geq \ln(1-\Theta\rho/\gamma)/\ln(1-\rho)$.
+\end{proof}
+
+\begin{corollaire}[La tension d'étalonnage]
+\label{cor:tension}
+Notons $x = \Theta\rho/\gamma$ (évalué en $\Theta=\theta_0$, à charge
+nulle). La condition d'admission d'un dossier authentique (une
+probabilité moyenne de renforcement indépendant $p \gtrsim x$ par pas,
+pour que le mécanisme reste utilisable en pratique) et la durée minimale
+de l'inondation soutenue nécessaire à l'attaquant, $n_{\min}(x)$ selon la
+proposition~\ref{prop:minpas}, sont gouvernées par la même quantité $x$.
+Abaisser $x$ pour faciliter l'admission des dossiers authentiques
+raccourcit nécessairement $n_{\min}$, et relever $x$ pour allonger
+$n_{\min}$ durcit nécessairement le seuil pour les dossiers authentiques.
+Aucun choix des constantes ajustables ne permet de relâcher l'un sans
+resserrer l'autre.
+\end{corollaire}
+
+Le corollaire~\ref{cor:tension} est énoncé et présenté comme une
+limitation authentique de cette classe de modèles, non résolue par le
+réglage des paramètres~: c'est une propriété structurelle de toute porte
+construite à partir d'une décroissance géométrique et d'un plafond fixe
+par pas, indépendante des constantes particulières retenues.
+
+\section{Évaluation adversariale}
+\label{sec:eval}
+
+La porte ($\rho=0{,}10$, $\gamma=1{,}0$, $w=3$ pas, $\delta=0{,}05$,
+$\theta_0=4{,}0$, $\kappa=0{,}5$, $C=5$) a été confrontée à l'ancienne
+référence statique --- admettre sans condition dès le premier
+renforcement, une fois le dossier stagnant et son délai d'attente
+expiré --- selon cinq scénarios adversariaux (code source et tests
+complets dans le dépôt du prototype accompagnant ce document~; résultats
+ci-dessous ré-exécutés indépendamment pour la rédaction du présent
+article, \texttt{pytest tests/test\_admission\_control.py -v -s}, 6/6
+réussis, 0{,}38\,s).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}p{4.0cm}p{4.6cm}p{4.6cm}@{}}
+\toprule
+Variante d'attaque & Référence statique & Porte défendue \\
+\midrule
+Salve en un seul pas, taille 1 à 5000, structure de cohorte quelconque
+  & 100\,\% admis, pas 0 & \textbf{0\,\% admis, sans condition} \\
+Inondation persistante, même cohorte, 200 pas
+  & Admis au pas 0 & \textbf{Structurellement inatteignable} (plafond
+    $0{,}5 < \theta{=}4{,}0$) \\
+Inondation persistante, cohorte usurpée (source fraîche à chaque pas)
+  & Admis au pas 0 & Admis au pas 4 (\textbf{retard $\times 5$}, conforme
+    à $n_{\min}\!\approx\!4{,}85$) \\
+Pulvérisation~: 200 dossiers, salve isolée chacun, 15 litiges
+  authentiques concurrents
+  & 215/215 admis (100\,\% de réussite pour l'attaque) &
+    \textbf{15/215 admis} (0\,\% de réussite, 93{,}0\,\% d'admissions en
+    moins) \\
+12 campagnes soutenues synchronisées, adaptation à la charge activée ou
+  non
+  & --- & étalement sur 0 pas (désactivée) $\to$ \textbf{étalement sur
+    13 pas} (activée) \\
+\bottomrule
+\end{tabular}
+\caption{Résultats mesurés, référence statique contre porte défendue. Un
+contrôle de cohérence (20 litiges authentiques, renforcés
+organiquement) a confirmé l'admission de 20 dossiers sur 20 par la porte
+défendue~: les chiffres de 0\,\% ci-dessus traduisent bien une
+discrimination réelle, non un rejet en bloc.}
+\end{table}
+
+Le résultat obtenu contre la cohorte usurpée est le résidu honnête, non
+vaincu~: un attaquant disposé à soutenir une campagne réellement
+diversifiée en identité (des cohortes fraîches, jamais réutilisées, à
+chaque pas) finit tout de même par réussir, à un coût relevé de $O(1)$ à
+$O(n_{\min})$. Ce résultat est présenté comme une défense partielle, non
+comme une clôture, exactement ce que prédit la
+proposition~\ref{prop:plafond} pour tout taux de contribution $c_{\ast}$
+dont le plafond dépasse $\Theta$.
+
+Deux bogues d'implémentation, découverts en cours de test et signalés
+plutôt que dissimulés, méritent d'être consignés comme des leçons
+d'ingénierie transposables à cette classe de mécanismes~: (1) une
+première version sommait les contributions d'une même cohorte
+\emph{à l'intérieur} d'un seul pas avant déduplication, ce qui permettait
+à une inondation d'une même cohorte d'atteindre le plafond par le seul
+volume intra-pas, contournant l'escompte d'indépendance --- corrigé en
+dédupliquant les cohortes par pas avant application du plafond~;
+(2) une première version des tests adversariaux ne libérait jamais les
+dossiers admis du signal de charge, produisant un seuil qui ne cessait de
+croître et affamait les dossiers authentiques ultérieurs, pur artefact de
+simulation --- corrigé en modélisant un temps de séjour borné à l'étage
+coûteux, non en assouplissant l'assertion du test. La leçon générale~:
+dans une porte de style \emph{quorum sensing}, le signal de charge doit
+être lié à une occupation réelle et se vidant effectivement, non à un
+compteur cumulatif d'admissions.
+
+\section{Antériorités}
+\label{sec:priorart}
+
+Une recherche dédiée en seize requêtes (journal complet conservé dans le
+document de spécification du dépôt accompagnant) a couvert le contrôle
+d'admission d'inspiration biologique, la littérature sur le
+\emph{quorum sensing} appliqué à l'informatique, la littérature sur le
+déni de service contre les cadres d'argumentation et la complexité des
+attaques ciblant l'extension préférée, ainsi que les systèmes
+d'arbitrage et de justice décentralisée. Aucun article n'a été trouvé
+composant les trois éléments ci-dessus (renforcement pondéré par
+décroissance et escompté selon l'indépendance des sources~; plafond
+strict par pas~; seuil adaptatif à la charge de type quorum) comme porte
+d'admission à un étage d'argumentation NP-complet.
+
+Les transferts pris isolément sont, en revanche, bien documentés, et
+cités comme tels~: le renforcement par décroissance de phéromone relève
+de l'optimisation par colonies de fourmis la plus classique
+\cite{dorigo2004,dicaro1998}~; une combinaison décroissance-plus-plafond,
+prise seule, est structurellement un limiteur de débit de type
+\emph{leaky bucket}/EWMA, primitive standard et non biologique~; un seuil
+d'admission qui s'élève avec la charge est structurellement proche de
+\emph{Random Early Detection} \cite{floyd1993}~; le \emph{quorum sensing}
+a déjà été transposé à l'informatique, pour le partitionnement en
+grappes \cite{wang2013} et pour l'agrégation d'anomalies de sécurité
+multi-agents \cite{fioravanti2012}, ni l'un ni l'autre n'étant une porte
+d'admission pour un étage d'argumentation. Le résultat adjacent le plus
+proche trouvé pour le patron général de transfert biologie-informatique
+employé ici est une défense contre les inondations par système immunitaire
+artificiel \cite{aiartnet2024}, qui repose sur la détection d'anomalies par
+entropie du trafic et une mise en quarantaine immunitaire --- un
+mécanisme différent, non fondé sur une décroissance de pression
+d'admission.
+
+\section{Menaces à la validité}
+\label{sec:threats}
+
+L'évaluation est une simulation synthétique à pas discrets, non un test
+contre une dynamique d'arrivée réelle en temps continu~; la traduction de
+la granularité du pas retenue ici vers l'unité de temps d'un déploiement
+réel reste un travail d'ingénierie non vérifié. La condition de cohorte
+usurpée accorde à l'attaquant une capacité généreuse (une identité
+fraîche et structurellement indétectable à chaque pas)~; le plafond réel
+de diversité d'identité qu'un détecteur effectif imposerait n'est pas
+modélisé ici. Cette porte suppose que les couches de détection de
+coordination et d'intégrité des preuves présentes ailleurs dans le
+pipeline sont inefficaces dans le pire cas testé ici (la condition de
+cohorte usurpée du scénario B)~; en pratique, ces couches relèveraient
+encore le coût réel de l'attaquant, mais cette composition n'est pas
+mesurée dans le présent document. Aucune affirmation n'est faite selon
+laquelle cette porte, ou le pipeline dans lequel elle s'insère, résoudrait
+le problème authentiquement ouvert de juger un contenu réellement inédit
+au regard d'une spécification contestée --- une question orthogonale et
+structurellement indécidable, que ce mécanisme ne touche pas.
+
+\section{Conclusion}
+
+La porte d'admission spécifiée ici ferme la variante la plus économique
+et la plus réaliste d'une attaque par épuisement de ressources contre un
+recours d'argumentation NP-complet --- des salves en un seul pas, de
+taille quelconque, concentrées sur un dossier ou pulvérisées sur
+plusieurs --- et relève, sans l'éliminer, le coût de la variante la plus
+difficile, patiente et diversifiée en identité, de $O(1)$ à
+$O(n_{\min})$ tours soutenus, sous la paramétrisation testée. Cette
+composition n'a pas été retrouvée dans une recherche dédiée
+d'antériorités à seize requêtes, tandis que ses transferts biologiques et
+informatiques constitutifs ont chacun, individuellement, été trouvés et
+cités comme précédents réels, non présentés comme novateurs. La tension
+d'étalonnage du corollaire~\ref{cor:tension} est rapportée comme une
+propriété inhérente à cette classe de modèles, non comme une limitation
+propre aux constantes choisies ici.
+
+\appendix
+\section{Placement dans le pipeline}
+
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=1.1cm and 1.6cm,
+  box/.style={draw, rounded corners, minimum width=3.3cm, minimum height=1cm, align=center, font=\small},
+  gate/.style={draw, rounded corners, thick, minimum width=3.6cm, minimum height=1.3cm, align=center, font=\small, fill=black!5},
+  arr/.style={-{Stealth[length=2.2mm]}, thick}
+]
+  \node[box] (dung) {Étape 2b\\Résolveur de Dung\\(ext. fondée, temps $P$)};
+  \node[box, right=of dung] (stale) {Ext. fondée vide\\+\\délai atteint};
+  \node[gate, right=of stale] (gate) {Porte d'admission\\(cet article)\\décroiss. + plafond + quorum};
+  \node[box, right=of gate, fill=red!5] (np) {Énum. ext.\\préférées\\(NP-complet)};
+
+  \draw[arr] (dung) -- (stale);
+  \draw[arr] (stale) -- (gate);
+  \draw[arr] (gate) -- node[above,font=\footnotesize]{admis} (np);
+  \draw[arr] (gate.south) to[out=250,in=290,looseness=1.6]
+      node[below,font=\footnotesize] {rejeté : le score se redécroît, nouvel essai au pas suivant} (gate.south west);
+\end{tikzpicture}%
+}
+\end{center}
+
+\begin{thebibliography}{99}
+
+\bibitem{dung1995} P.~M. Dung. On the acceptability of arguments and its
+fundamental role in nonmonotonic reasoning, logic programming and
+n-person games. \emph{Artificial Intelligence}, 77(2):321--357, 1995.
+
+\bibitem{fichte2024} J.~K. Fichte, S.~A. Gaggl, D.~Rusovac, et al.
+Complexity of claim-centric abstract argumentation frameworks.
+\emph{AAAI}, 2024.
+
+\bibitem{dorigo2004} M.~Dorigo et T.~Stützle. \emph{Ant Colony
+Optimization}. MIT Press, 2004.
+
+\bibitem{dicaro1998} G.~Di Caro et M.~Dorigo. AntNet: Distributed
+stigmergetic control for communications networks. \emph{Journal of
+Artificial Intelligence Research}, 9:317--365, 1998.
+
+\bibitem{miller2001} M.~B. Miller et B.~L. Bassler. Quorum sensing in
+bacteria. \emph{Annual Review of Microbiology}, 55:165--199, 2001.
+
+\bibitem{floyd1993} S.~Floyd et V.~Jacobson. Random early detection
+gateways for congestion avoidance. \emph{IEEE/ACM Transactions on
+Networking}, 1(4):397--413, 1993.
+
+\bibitem{wang2013} X.~Wang. A quorum sensing inspired algorithm for
+dynamic clustering. \emph{arXiv:1303.3934}, 2013.
+
+\bibitem{fioravanti2012} M.~E. Fioravanti~II. Digital quorum sensing for
+self-organizing malware / a quorum sensing pattern for multi-agent
+self-organizing security systems. Florida Institute of Technology,
+2012--2013.
+
+\bibitem{aiartnet2024} Adaptive artificial immune networks for
+mitigating DoS flooding attacks. \emph{arXiv:2402.07714}.
+
+\bibitem{specA} Spécification interne~: \emph{A four-stage
+content-moderation escalation pipeline: formal specification, attack
+analysis, and prototype verdict}, \texttt{moderation-pipeline-prototype/SPEC.md},
+2026.
+
+\end{thebibliography}
+
+\end{document}

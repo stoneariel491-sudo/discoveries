@@ -1,0 +1,15 @@
+# Intermediaires LaTeX (les .tex et les .pdf sont versionnes)
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Depot autonome, versionne separement
+moderation-pipeline-prototype/
+
+# Divers
+__pycache__/
+.pytest_cache/

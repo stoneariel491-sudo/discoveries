@@ -1,0 +1,129 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=3cm]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}
+{\LARGE A Town Gate That Learns to Wait}\\[0.6em]
+{\large A plain-language account of the ``stigmergic-quorum admission
+control'' technique}\\[0.3em]
+{\small \texttt{moderation-pipeline-prototype} --- August 2026}
+\end{center}
+
+\vspace{1em}
+
+\textbf{The problem.} Some disputes that reach a moderation system are
+genuinely hard to settle: two sides each have arguments that attack the
+other's, and the easy, fast method for weighing them comes back with no
+clear answer. When that happens, the system falls back to a much more
+thorough, much more expensive method of sorting the whole tangle out ---
+worth doing, but not something you want to do for free, on demand,
+for anyone who asks. The trouble is in how that expensive method gets
+triggered. In the original design, the very first person who shows up
+with a plausible-looking argument gets the case waved through to the
+expensive process, instantly. That is exactly the kind of rule an
+attacker loves: show up once, in bulk, with a pile of manufactured
+arguments, and the expensive gate opens for free, as many times as you
+like.
+
+\textbf{The idea.} The fix borrows two tricks from nature, and it is
+worth taking them one at a time, because each solves a different half
+of the problem.
+
+The first trick is how ant colonies remember which path to food is
+worth following. An ant does not vote once and settle the matter; it
+lays down a scent as it walks, and that scent fades steadily unless
+other ants, arriving independently, walk the same way and refresh it. A
+path only stays marked if it keeps earning fresh footsteps from
+different ants --- one ant pacing back and forth on its own trail all
+day leaves a trail that is, for practical purposes, exactly as strong as
+one visit. Applied here: every disputed case carries a score that fades
+a little every tick of the clock, and a new argument only tops the score
+back up by very little if it comes from a source that has already
+weighed in recently. Genuinely new, independent concern keeps a
+case's score alive; the same complainer shouting the same thing over and
+over does not.
+
+The second trick is how bacteria decide, as a colony, when there are
+enough of them to act together --- a mechanism called quorum sensing.
+No single bacterium makes that call alone; the whole colony reads a
+shared chemical signal that reflects how crowded things already are, and
+raises or lowers its collective threshold for action accordingly.
+Applied here: the bar a case must clear to reach the expensive process
+is not fixed. It rises automatically whenever that expensive process is
+already busy with other cases, exactly the way a restaurant becomes
+harder to get a table at as it fills up, without anyone at the door
+consciously deciding to be stricter.
+
+\textbf{Put together.} A disputed case's score decays like an ant trail
+losing its scent, is topped up only by reinforcement that looks like it
+came from someone new, is capped so no single moment of activity can
+push it past a sensible cap, and must clear a bar that rises with how
+busy the expensive process already is. A single burst of manufactured
+outrage, however large, cannot move a decaying, capped score past a
+threshold in one instant --- there simply is not enough weight allowed
+into any one tick of the clock, no matter how many fake voices show up
+at once.
+
+\textbf{What was actually measured, not just hoped for.} The mechanism
+was tested against its own predecessor --- the instant-admission rule
+--- under several kinds of attack, and the two were compared honestly,
+including on the case where the new mechanism does \emph{not} fully
+win. A single flood, of any size from one voice to five thousand,
+landing in one moment: fully blocked, every time, where the old rule let
+every single one through. The same flood sustained for a very long time
+from one traceable source: still fully blocked, provably, not just
+``blocked so far in the tests that were run.'' Two hundred separate
+disputes each hit with a one-shot burst, alongside fifteen genuine,
+organically-growing disputes running at the same time: the old rule let
+every attack through and admitted every genuine case too, at a real
+processing cost of 215 cases; the new mechanism let through zero of the
+attacks while still admitting every one of the genuine fifteen, at a
+real processing cost of 15 --- ninety-three percent less work forced
+onto the expensive process. The honest exception, stated plainly rather
+than buried: a patient attacker willing to manufacture a fresh,
+never-reused, independent-looking identity every single tick of the
+clock, for several ticks in a row, is not fully stopped. That attacker
+still gets through eventually, at roughly five times the effort and time
+the old rule would have cost them. The mechanism turns a free attack
+into an expensive one; it does not turn it into an impossible one, and
+that limit is reported here rather than left for someone else to
+discover the hard way.
+
+\textbf{What it deliberately does not do.} It says nothing about who is
+\emph{right} in the underlying dispute --- that judgment is left entirely
+to the expensive process it is guarding, once a case is let through. It
+assumes there is some real cost, even a small one, to appearing as a
+brand-new independent voice every single tick; if that assumption ever
+stops holding for a given attacker, the delay is the whole defense, not
+a backup behind something stronger. And the fading-and-capping trick and
+the rising-bar trick, taken completely apart from each other, are each
+individually well known outside biology too --- the first resembles an
+ordinary rate limiter used all over computing, the second resembles a
+decades-old networking technique for easing congestion before a queue
+overflows. What a dedicated search of the relevant research literature
+did not turn up is this particular combination of all three pieces,
+guarding specifically this kind of expensive, hard-to-parallelize
+fallback process. That is the narrow claim being made, and only to the
+extent that search was thorough --- not a claim that no one, anywhere,
+has ever combined these ideas before.
+
+\textbf{Why it is worth writing down.} Nothing about the expensive
+process itself needed to change; the fix sits entirely at the door in
+front of it. The individual ingredients --- a fading score, a cap on
+how much one moment can contribute, a bar that rises with crowding ---
+are each borrowed from places with decades of their own track record,
+biological and computational alike. What is reported here is how they
+compose, tested honestly against the attack it was built to resist, with
+the case where it only partly succeeds stated as plainly as the cases
+where it fully does.
+
+\end{document}
