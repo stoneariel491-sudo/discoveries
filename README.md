@@ -39,3 +39,9 @@ there are no image assets to fetch.
   for the combination of techniques; the building blocks are established.
 - The admission-control numbers come from simulated attacks in the prototype's test suite, not
   from production traffic.
+
+## How it was built
+
+I produced this write-up by directing AI coding agents (Claude Code): I set the goals, the
+constraints and the verification method, and reviewed the results; the agents drafted most of
+the text and the LaTeX sources, in both languages, and the prototype's code they document.

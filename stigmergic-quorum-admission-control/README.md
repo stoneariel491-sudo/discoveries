@@ -22,7 +22,8 @@ minimum-ticks-to-admission propositions with proofs argued from the
 recurrence actually implemented in `admission_control.py`; the
 calibration-tension corollary; the adversarial-evaluation table (five
 attack scenarios, numbers independently re-executed via `pytest` for
-this package, not copied from memory); the 16-query prior-art search;
+this package and checked against the prototype's code); the 16-query
+prior-art search;
 an honest threats-to-validity section; and a TikZ pipeline diagram (the
 French paper's diagram is the same figure, translated, not a separate
 drawing). The French paper was written directly in French rather than
@@ -56,7 +57,7 @@ softening it.
   independently re-derived by re-running
   `pytest tests/test_admission_control.py -v -s` against the actual
   `moderation-pipeline-prototype` code during this documentation pass
-  (not copied from the earlier session's own report): the persistent
+  (rather than copied from earlier reported figures): the persistent
   same-cohort-flood steady-state ceiling (0.5, against a threshold of
   4.0) and the persistent cohort-spoofed-flood delay (measured
   admission at tick 4, against the closed-form prediction of
@@ -73,8 +74,7 @@ softening it.
 
 This package documents one of the three candidates that survived the
 project's novelty-pipeline step 2 (dual-seam structural coordination
-detection and the danger-model trigger are the other two). Per the
-project owner's explicit decision, those two remain at their prior
-"consigned, not yet formalized" state deliberately — this session's
-scope was this candidate only, taken to completion rather than three
+detection and the danger-model trigger are the other two). By
+deliberate choice, those two remain at their prior "consigned, not yet
+formalized" state — this package's scope was this candidate only, taken to completion rather than three
 candidates advanced partway.
