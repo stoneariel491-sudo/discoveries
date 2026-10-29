@@ -25,12 +25,10 @@ attack scenarios, numbers independently re-executed via `pytest` for
 this package, not copied from memory); the 16-query prior-art search;
 an honest threats-to-validity section; and a TikZ pipeline diagram (the
 French paper's diagram is the same figure, translated, not a separate
-drawing). The French paper was composed natively in French — sentence
-structure, register, and terminology were built from the model itself,
-not produced by translating the English paper's prose — and checked
-against a common list of English-to-French syntactic calques (verb
-government, word order, false cognates such as treating "adresser" as
-"to address a problem") before being accepted.
+drawing). The French paper was written directly in French rather than
+translated from the English prose, and checked against common
+English-to-French calques (verb government, word order, false cognates
+such as "adresser" for "to address a problem").
 
 The practitioner guides carry the applied material the papers
 deliberately exclude: an annotated walkthrough of
@@ -46,15 +44,6 @@ quorum sensing) in plain language, report the same real adversarial
 numbers, and state the same honest residual (a patient,
 identity-diverse attacker is delayed, not fully blocked) without
 softening it.
-
-All six documents were passed through a human-register edit before
-being accepted: checked against a current list of AI-authorship tells
-(stock intensifiers, em-dash overuse, triadic parallelism, aphoristic
-closers, over-signposted structure, hollow hedging) refreshed from a
-live search rather than reused from memory, and, for the three French
-documents specifically, checked against a list of common English-to-
-French calque patterns so the prose reads as native scholarly and
-practitioner French rather than translated English rhythm.
 
 ## Verification
 
@@ -76,10 +65,9 @@ practitioner French rather than translated English rhythm.
   admissions, 93.0% fewer) and the load-adaptive-threshold ablation
   spread (0 ticks → 13 ticks) were checked the same way and also
   matched.
-- `.tex` sources for all six documents are archived in `build/`,
-  alongside the `.aux`/`.log`/`.out` files from their final compile, so
-  a future revision can regenerate rather than rewrite. The deliverable
-  root above contains only the six PDFs and this README.
+- `.tex` sources for all six documents are archived in `build/`, so a
+  future revision can regenerate rather than rewrite. The six PDFs live
+  at the root of this folder, next to this README.
 
 ## Scope note
 
